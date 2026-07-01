@@ -13,7 +13,7 @@
 
     <groupId>com.ib.poc</groupId>
     <artifactId>app-message-twilio-poc</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <name>app-message-twilio-poc</name>
     <description>WhatsApp messaging via Twilio SDK — Hexagonal Architecture</description>
 

@@ -1,5 +1,6 @@
 package com.ib.poc.whatsapp.infrastructure.adapter.storage;
 
+import com.ib.poc.whatsapp.domain.model.DownloadedMedia;
 import com.ib.poc.whatsapp.domain.model.MediaAttachment;
 import com.ib.poc.whatsapp.application.port.out.MediaStoragePort;
 import com.ib.poc.whatsapp.infrastructure.config.MediaProperties;
@@ -26,16 +27,16 @@ public class LocalDiskMediaStorageAdapter implements MediaStoragePort {
     }
 
     @Override
-    public Path store(MediaAttachment attachment, String messageId, byte[] content) {
+    public Path store(MediaAttachment attachment, String messageId, DownloadedMedia downloaded) {
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
         Path dir = Path.of(mediaProperties.getStoragePath()).resolve(dateFolder);
         try {
             Files.createDirectories(dir);
-            String filename = resolveFilename(attachment);
+            String filename = resolveFilename(attachment, downloaded.getOriginalFilename());
             Path target = dir.resolve(filename);
-            Files.write(target, content);
-            log.info("Media stored. index={} path={} size={}bytes",
-                    attachment.getIndex(), target, content.length);
+            Files.write(target, downloaded.getContent());
+            log.info("Media stored [S3]. index={} path={} size={}bytes",
+                    attachment.getIndex(), target, downloaded.getContent().length);
             return target;
         } catch (IOException e) {
             log.error("Failed to store media. index={} messageId={} error={}",
@@ -44,7 +45,12 @@ public class LocalDiskMediaStorageAdapter implements MediaStoragePort {
         }
     }
 
-    private String resolveFilename(MediaAttachment attachment) {
+    private String resolveFilename(MediaAttachment attachment, String originalFilename) {
+        if (originalFilename != null && !originalFilename.isBlank()) {
+            String name = attachment.getIndex() + "_" + originalFilename;
+            return name.contains(".") ? name : name + extensionFromContentType(attachment.getContentType());
+        }
+        // Fallback: Media SID + ext derived from contentType
         String ext = extensionFromContentType(attachment.getContentType());
         try {
             String path = URI.create(attachment.getUrl()).getPath();

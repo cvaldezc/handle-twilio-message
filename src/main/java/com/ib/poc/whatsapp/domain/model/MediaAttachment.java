@@ -9,4 +9,5 @@ public class MediaAttachment {
     int index;
     String url;
     String contentType;
+    String filename; // from MediaFilename{N} webhook param, null if not provided by Twilio
 }

@@ -7,6 +7,7 @@ import com.ib.poc.whatsapp.application.port.out.MediaDownloaderPort;
 import com.ib.poc.whatsapp.application.port.out.MediaStoragePort;
 import com.ib.poc.whatsapp.domain.model.CompanyInfo;
 import com.ib.poc.whatsapp.domain.model.ConversationSession;
+import com.ib.poc.whatsapp.domain.model.DownloadedMedia;
 import com.ib.poc.whatsapp.domain.model.InboundMessage;
 import com.ib.poc.whatsapp.domain.model.MediaAttachment;
 import com.ib.poc.whatsapp.domain.model.ReceivedFile;
@@ -66,8 +67,7 @@ public class ConversationOrchestratorService implements ReceiveMessageUseCase {
 
         return switch (session.getState()) {
             case WAITING_CUIT    -> handleDocumentNumber(session, message);
-            case WAITING_FILES   -> handleFiles(session, message);
-            case COLLECTING_FILES -> handleFiles(session, message);
+            case WAITING_FILES, COLLECTING_FILES -> handleFiles(session, message);
             case PROCESSING      -> Optional.of("Su solicitud está siendo procesada, por favor espere.");
             case COMPLETED       -> {
                 debouncer.cancel(phone);
@@ -87,7 +87,7 @@ public class ConversationOrchestratorService implements ReceiveMessageUseCase {
                 .build();
         sessionPort.save(session);
         log.info("New session created. phone={}", phone);
-        return Optional.of("Bienvenido. Por favor ingrese el número de documento de su empresa para continuar.");
+        return Optional.of("Bienvenido. Por favor ingrese el número de documento:");
     }
 
     private Optional<String> handleDocumentNumber(ConversationSession session, InboundMessage message) {
@@ -113,7 +113,7 @@ public class ConversationOrchestratorService implements ReceiveMessageUseCase {
         sessionPort.save(session);
 
         log.info("Document number validated. phone={} company='{}'", session.getPhoneNumber(), company.getCompanyName());
-        return Optional.of("Empresa: " + company.getCompanyName() + ". Por favor envíe los archivos a procesar como adjuntos.");
+        return Optional.of(company.getCompanyName() + ". Por favor envíe los archivos a procesar.");
     }
 
     private Optional<String> handleFiles(ConversationSession session, InboundMessage message) {
@@ -125,8 +125,8 @@ public class ConversationOrchestratorService implements ReceiveMessageUseCase {
         log.info("Receiving {} file(s). phone={}", message.getNumMedia(), session.getPhoneNumber());
 
         for (MediaAttachment attachment : message.getMediaAttachments()) {
-            byte[] bytes = mediaDownloaderPort.download(attachment);
-            Path stored = mediaStoragePort.store(attachment, message.getMessageSid(), bytes);
+            DownloadedMedia downloaded = mediaDownloaderPort.download(attachment);
+            Path stored = mediaStoragePort.store(attachment, message.getMessageSid(), downloaded);
 
             ReceivedFile receivedFile = ReceivedFile.builder()
                     .filename(stored.getFileName().toString())

@@ -69,6 +69,7 @@ public class WhatsAppWebhookApplicationService {
                         .index(i)
                         .url(allParams.get("MediaUrl" + i))
                         .contentType(allParams.getOrDefault("MediaContentType" + i, "application/octet-stream"))
+                        .filename(allParams.get("MediaFilename" + i))
                         .build())
                 .toList();
     }
